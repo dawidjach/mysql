@@ -1,0 +1,369 @@
+
+------ ABSCHLUSSÜBUNG SQL/Transact SQL Abfragen -------
+
+--- /1/ Die Daten aller Lieferanten aus Ludwigshafen ?
+
+select *
+from lieferant
+where lstadt = 'Ludwigshafen';
+
+--- /2/ Die Nummern, Namen und Lagerorte aller gelieferten Artikel ?
+
+select anr, aname, astadt
+from artikel;
+
+--- oder ---
+
+select distinct a.anr, aname, astadt
+from artikel a, lieferung b
+where a.anr = b.anr;
+
+--- oder ---
+
+select distinct a.anr, aname, astadt
+from artikel a join lieferung b over a.anr = b.anr;
+
+--- /3/ Die Nummern und Namen aller Artikel und ihr Gewicht in "kg" ?
+
+select anr, aname, gewicht * 0.001 as [Gewicht in Kilo]
+from artikel;
+
+--- oder ---
+
+select anr, aname, 'Gewicht/kg' = gewicht * 0.001
+from artikel;
+
+
+--- /4/ Die Namen aller Lieferanten aus Aachen mit einem Statuswert zw. 20 und 30 ?
+
+select lname
+from lieferant
+where lstadt = 'Aachen'
+and status between 20 and 30;
+
+--- oder ---
+
+select lname
+from lieferant
+where lstadt = 'Aachen'
+and status >= 20 and status <= 30;
+
+--- /5/ Die Nummern und Namen aller Artikel, deren Gewicht 12, 14 oder 17 Gramm beträgt ?
+
+select anr, aname, gewicht
+from artikel
+where gewicht in(12, 14, 17);
+
+--- oder ---
+
+select anr, aname, gewicht
+from artikel
+where gewicht = 12 or gewicht = 14 or gewicht = 17;
+
+--- /6/ Die Daten aller Lieferungen von Lieferanten aus Hamburg.
+
+select *
+from lieferung
+where exists (select *
+				from lieferant
+				where lieferung.lnr = lieferant.lnr
+				and lstadt = 'Hamburg');
+
+--- or --- 
+
+select *
+from lieferung a
+where exists (select *
+				from lieferant b
+				where a.lnr = b.lnr
+				and lstadt = 'Hamburg');
+
+--- or ---
+
+select *
+from lieferung
+where lnr in (select lnr
+				from lieferant
+				where lstadt = 'Hamburg');
+
+
+--- /7/ Artikelnummer, Artikelname und Lieferantennummern und Lieferantennamen mit übereinstimmenden Lagerort und Wohnort ?
+
+select anr, aname, lnr, lname, astadt, lstadt
+from artikel 
+cross join lieferant
+where astadt = lstadt;
+
+--- oder ---
+
+select anr, aname, lnr, lname
+from artikel, lieferant
+where astadt = lstadt;
+
+--- oder ---
+
+select anr, aname, lnr, lname
+from artikel
+join lieferant
+on astadt = lstadt;
+
+--- /8/ Artikelnummer, Artikelname und Lagerort aller gelieferten Artikel und Lieferantennummer, Lieferantenname und Wohnort des jeweiligen Lieferanten,
+--- sofern Lagerort und Wohnort überstimmen ?
+
+select anr, aname, astadt, lnr, lname, lstadt
+from artikel 
+cross join lieferant
+where lstadt = astadt;
+
+--- /9/ Paare von Artikelnummern, von Artikeln mit gleichem Lagerort (jedes Paar soll nur einmal ausgegeben werden) ?
+
+select a.anr, b.anr
+from artikel a, artikel b
+where a.astadt = b.astadt
+and a.anr < b.anr;
+
+--- oder ---
+select a.anr, b.anr
+from artikel a
+join artikel b
+on a.astadt = b.astadt
+and a.anr < b.anr;
+
+--- /10/ Nummern alle Lieferanten, die mind. einen Artikel geliefert haben den auch Lieferant 'L03' geliefert hat ?
+
+select lnr
+from lieferung
+where anr in (select anr 
+				from lieferung
+				where lnr = 'L03')
+and lnr <> 'L03';
+
+--- /11/ Nummern aller Lieferanten, die mehr als einen Artikel geliefert haben ?
+
+select lnr
+from lieferung
+group by lnr
+having COUNT(distinct anr) > 1;
+
+--- /12/ Nummern und Namen der Artikel, die am selben Ort wie Artikel A03 gelagert werden ?
+
+select anr, aname
+from artikel
+where astadt = (select astadt 
+				from artikel 
+				where anr = 'A03')
+and anr <> 'A03';
+
+--- /13/ Durschnittliche Liefermenge des Artikels A01 ?
+
+select AVG(lmenge) as [Durschnittliche Liefermenge des Artikels A01]
+from lieferung
+where anr = 'A01';
+
+--- /14/ Gesamtliefermenge aller Lieferungen des Artikels A01 durch den Lieferanten L02 ?
+
+select SUM(lmenge) as [Gesamtliefermenge]
+from lieferung
+where anr = 'A01' 
+and lnr = 'L02';
+
+--- /15/ Lagerorte der Artikel, die von Lieferant L02 geliefert wurden ?
+
+select astadt
+from artikel
+where anr in (select anr
+				from lieferung
+				where lnr = 'L02');
+
+--- oder --- 
+
+select astadt
+from artikel a, lieferung b
+where a.anr = b.anr
+and lnr = 'L02';
+
+--- /16/ Nummern und Namen der Lieferanten, deren Statuswert kleiner als der von Lieferant L03 ist ?
+
+select lnr, lname
+from lieferant
+where status < (select status 
+				from lieferant 
+				where lnr = 'L03');
+
+--- /17/ Nummern aller Lieferanten, welche die gleichen Artikel wie Lieferant L02 geliefert haben ?
+
+select distinct lnr
+from lieferung a
+where lnr <> 'L02'
+and not exists (select *
+				from lieferung b
+				where lnr = 'L02'
+				and not exists (select *
+								from lieferung c
+								where c.lnr = a.lnr
+								and c.anr = b.anr));
+
+--- /18/ Die Namen aller Orte die Lagerort von Artikeln oder Wohnort von Lieferanten sind ?
+
+select astadt as [Lagerort bzw. Wohnort]
+from artikel
+union
+select lstadt
+from lieferant;
+
+--- /19/ Nummern und Namen aller Lieferanten, die nicht den Artikel A05 geliefert haben ?
+
+select lnr, lname
+from lieferant
+where lnr not in (select lnr
+					from lieferung
+					where anr = 'A05');
+
+-- /20/ Lieferantennummern und Namen der Lieferanten, die alle Artikel geliefert haben ?
+
+select lnr, lname
+from lieferant a
+where not exists (select *
+					from artikel b
+					where not exists (select *
+										from lieferung c
+										where c.anr = b.anr
+										and a.lnr = c.lnr));
+
+--- oder ---
+
+select lnr, lname
+from lieferant
+where lnr in (select lnr
+				from lieferung
+				group by lnr
+				having COUNT(distinct anr) = (select COUNT(*) from artikel));
+
+--- /21/ Nummern, Name und Wohnort der Lieferanten, die bereits geliefert haben und deren Statuswert größer als der kleinste Statuswert aller Lieferanten ist ?
+
+select distinct a.lnr, lname, lstadt
+from lieferant a, lieferung b
+where a.lnr = b.lnr
+and status > (select MIN(status) from lieferant);
+
+--- /22/ Nummern und Bezeichnung alter Artikel, deren durschnittliche Liefermenge kleiner als die des Artikels A03 ist ?
+
+select anr, aname
+from artikel
+where anr in (select anr
+				from lieferung
+				group by anr
+				having AVG(lmenge) < (select AVG(lmenge)
+										from lieferung
+										where anr = 'A03'));
+
+--- /23/ Lieferantennummer, Lieferantenname, Artikelnummer und Artikelbezeichnung aller Lieferungen, die seit dem 05.05.1990 von Hamburger Lieferanten durchgeführt wurden ?
+
+select lnr, lname, b.anr, aname
+from lieferant, artikel
+where lnr + anr in(select lnr + anr
+					from lieferung
+					where ldatum >= '05.05.1990')
+and lstadt = 'Hamburg';
+
+--- /24/ Anzahl der Lieferungen, die seit dem 05.05.1990 von Hamburger Lieferanten durchgeführt wurden ?
+
+select COUNT(*)
+from lieferant a, lieferung b
+where a.lnr = b.lnr
+and lstadt = 'Hamburg'
+and ldatum >= '05.05.1990';
+
+
+----- AUFGABEN ----
+
+---/1/ Alle Angaben zu den Lieferanten deren Statuswert über dem durchschnittlichen Statuswert der Lieferanten liegt, die in der gleichen Stadt wohnen wie Lieferanten L02. ---
+
+select *
+from lieferant
+where status > (select AVG(status) from lieferant
+				where lstadt = (select lstadt
+				from lieferant
+				where lnr = 'L02'));
+
+--- /2/ Nummern und Namen der Artikel die im August 1990 von Lieferanten geliefert wurden die mind. 3 Mal geliefert haben. ---
+select anr, aname
+from artikel
+where anr in (select anr
+			from lieferung
+			where datepart (mm,ldatum) = 8 
+			and datepart (yyyy,ldatum) = 1990
+and lnr in (select lnr
+			from lieferung
+			group by lnr 
+			having COUNT(lnr) >= 3));
+
+
+--- /3/ Gesucht ist das Lieferdatum der Lieferungen wo Hamburger Lieferanten rote und blaue Artikel gelefiert haben. ---
+select ldatum
+from lieferung
+where lnr in (select lnr from lieferant where lstadt = 'Hamburg')
+and anr in (select anr from artikel where farbe in ('rot', 'blau'));
+
+
+--- /4/ Gesucht sind die Namen und Nummern der Artikel deren letzte Lieferung an dem Tag war als auch Artikel A02 zuletzt geliefert wurde. ---
+insert into lieferung values('L04','A04',500,'09.08.90');
+insert into lieferung values('L04','A03',500,'09.08.90');
+
+select anr, aname
+from artikel
+where anr in (select anr
+				from lieferung
+				group by anr 
+				having MAX(ldatum) = 
+				(select MAX(ldatum)
+				from lieferung
+				where anr = 'A02'));
+        
+ --- /5/ Abfrage, die alle am August durchgeführten Lieferungen zählt.
+select count(lnr) as [Anzahl der Lieferungen im August]
+from lieferung
+where datepart(mm,ldatum) = 8;
+
+
+--- /6/ Abfrage, welche die Anzahl aller NICHT-NULLWERTE des Feldes "lstadt" in der Lieferantentabelle ermittelt.
+select COUNT(lstadt) from lieferant;
+
+
+--- /7/ Abfrage, die die jeweils kleinste Lieferung eines jeden Lieferanten anzeigt.
+select lnr, MIN(lmenge)
+from lieferung
+group by lnr;
+
+
+--- /8/ Abfrage, die den ersten Lieferanten ermittelt, dessen Name mit "S" beginnt (in alphabetischer Reihenfolge).
+insert into lieferant values('L14','Sach',10,'Berlin');
+
+-- Antwort - alle Namen mit "S" beginnen in alphabetischer Reihenfolge:
+select MIN(lname)
+from lieferant
+where lname like 'S%';
+
+
+--- /9/ Abfrage, mit der Sie den höchsten Lagerbestand von Artikeln am jeweiligen Lagerort ermitteln können.
+select astadt, MAX(amenge)
+from artikel
+group by astadt;
+
+
+--- /10/ Wie viele unterschiedliche Artikel wurden von jedem Lieferanten geliefert?
+select lnr, count(distinct anr) as [unterschiedliche Artikel von jedem Lieferanten:]
+from lieferung
+group by lnr;
+
+
+-- /11/ Welche Hamburger Lieferanten haben nach dem 01.08.90 rote und blaue Artikel geliefert?
+select *
+from lieferant
+where lstadt = 'Hamburg' 
+			and lnr in(select lnr
+			from lieferung
+			where ldatum >'01.08.90' 
+			and anr in(select anr from artikel where farbe in('rot', 'blau')));
+
+
